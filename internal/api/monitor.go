@@ -54,3 +54,15 @@ func (h *Handler) CreateMonitor(ctx *gin.Context) {
 		"expected_status":  req.ExpectedStatus,
 	})
 }
+
+func (h *Handler) ListMonitors(ctx *gin.Context) {
+	res, err := h.store.ListMonitors(ctx.Request.Context())
+
+	if err != nil {
+		log.Printf("error while getting monitors from postgres: %v", err)
+		ctx.JSON(http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}

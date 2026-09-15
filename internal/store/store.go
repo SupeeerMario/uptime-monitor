@@ -2,12 +2,22 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store struct {
 	pool *pgxpool.Pool
+}
+
+type Monitor struct {
+	Id              int64      `json:"id"`
+	Url             string     `json:"url"`
+	IntervalSeconds int        `json:"interval_seconds"`
+	ExpectedStatus  int        `json:"expected_status"`
+	LastCheckedAt   *time.Time `json:"last_checked_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 func New(pool *pgxpool.Pool) *Store {
@@ -27,4 +37,45 @@ func (s *Store) CreateMonitor(ctx context.Context, url string, intervalSeconds i
 	}
 
 	return id, nil
+}
+
+func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
+	list := []Monitor{}
+
+	query := `SELECT id, url, interval_seconds, expected_status,
+			  last_checked_at, created_at
+			  FROM monitors ORDER BY id`
+
+	rows, err := s.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var m Monitor
+
+		err := rows.Scan(
+			&m.Id,
+			&m.Url,
+			&m.IntervalSeconds,
+			&m.ExpectedStatus,
+			&m.LastCheckedAt,
+			&m.CreatedAt,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+
 }
