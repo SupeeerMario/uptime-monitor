@@ -91,3 +91,16 @@ func (h *Handler) DeleteMonitor(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 
 }
+
+func (h *Handler) ListDueMonitors(ctx *gin.Context) {
+
+	res, err := h.store.ListDueMonitors(ctx.Request.Context())
+
+	if err != nil {
+		log.Printf("error while returning due monitors: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}

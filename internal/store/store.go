@@ -20,6 +20,12 @@ type Monitor struct {
 	CreatedAt       time.Time  `json:"created_at"`
 }
 
+type DueMonitor struct {
+	Id             int64  `json:"id"`
+	Url            string `json:"url"`
+	ExpectedStatus int    `json:"expected_status"`
+}
+
 func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool}
 }
@@ -28,7 +34,7 @@ func (s *Store) CreateMonitor(ctx context.Context, url string, intervalSeconds i
 	var id int64
 	query := `INSERT INTO monitors(url, interval_seconds, expected_status)
 			  VALUES ($1, $2, $3)
-			  RETURNING id`
+			  RETURNING id;`
 
 	err := s.pool.QueryRow(ctx, query, url, intervalSeconds, expectedStatus).Scan(&id)
 
@@ -44,7 +50,7 @@ func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
 
 	query := `SELECT id, url, interval_seconds, expected_status,
 			  last_checked_at, created_at
-			  FROM monitors ORDER BY id`
+			  FROM monitors ORDER BY id;`
 
 	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
@@ -83,7 +89,7 @@ func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
 func (s *Store) DeleteMonitor(ctx context.Context, id int64) (int64, error) {
 
 	query := `DELETE FROM monitors
-			  WHERE id = $1`
+			  WHERE id = $1;`
 
 	res, err := s.pool.Exec(ctx, query, id)
 
@@ -94,4 +100,42 @@ func (s *Store) DeleteMonitor(ctx context.Context, id int64) (int64, error) {
 	rowsAffected := res.RowsAffected()
 
 	return rowsAffected, nil
+}
+
+func (s *Store) ListDueMonitors(ctx context.Context) ([]DueMonitor, error) {
+	list := []DueMonitor{}
+
+	query := `SELECT id, url, expected_status FROM monitors
+			  WHERE last_checked_at IS NULL OR 
+			  last_checked_at + make_interval(secs => interval_seconds) <= now();`
+
+	rows, err := s.pool.Query(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var d DueMonitor
+
+		err := rows.Scan(
+			&d.Id,
+			&d.Url,
+			&d.ExpectedStatus,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, d)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }

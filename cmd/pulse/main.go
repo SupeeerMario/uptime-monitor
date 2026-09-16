@@ -45,6 +45,7 @@ func main() {
 	r.POST("/monitors", handler.CreateMonitor)
 	r.GET("/monitors", handler.ListMonitors)
 	r.DELETE("/monitors/:id", handler.DeleteMonitor)
+	r.GET("/duemonitors", handler.ListDueMonitors)
 
 	server := &http.Server{
 		Addr:    ":" + envs.PORT,
