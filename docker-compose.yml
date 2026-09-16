@@ -9,6 +9,11 @@ services:
       - PORT=${PORT}
     volumes:
       - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      golang-migrate:
+        condition: service_completed_successfully
 
   db:
     image: postgres:17
