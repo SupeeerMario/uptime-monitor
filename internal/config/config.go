@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/joho/godotenv"
+//	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -15,7 +15,7 @@ type Config struct {
 
 func Load() Config {
 
-	_ = godotenv.Load()
+//	_ = godotenv.Load()
 
 	if val, ok := os.LookupEnv("DB_URL"); ok == false || val == "" {
 		log.Fatal("ERROR LOADING DB_URL FROM .ENV")

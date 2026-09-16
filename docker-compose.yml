@@ -1,4 +1,15 @@
 services:
+
+  go-app:
+    build: .
+    ports:
+      - 8000:8000
+    environment:
+      - DB_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable
+      - PORT=${PORT}
+    volumes:
+      - .:/app
+
   db:
     image: postgres:17
     container_name: postgres
@@ -11,10 +22,10 @@ services:
     volumes:
       - db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}" ]
       interval: 5s
       retries: 5
-  
+
   golang-migrate:
     image: migrate/migrate:4
     container_name: golang-migrate
@@ -22,13 +33,12 @@ services:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-    depends_on: 
+    depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["migrate", "-path", "/migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "up"]
+    entrypoint: [ "migrate", "-path", "/migrations", "-database", "postgres://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "up" ]
     volumes:
       - ./migrations:/migrations
-
 
 volumes:
   db:
