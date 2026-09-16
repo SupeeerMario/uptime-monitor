@@ -79,3 +79,19 @@ func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
 	return list, nil
 
 }
+
+func (s *Store) DeleteMonitor(ctx context.Context, id int64) (int64, error) {
+
+	query := `DELETE FROM monitors
+			  WHERE id = $1`
+
+	res, err := s.pool.Exec(ctx, query, id)
+
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected := res.RowsAffected()
+
+	return rowsAffected, nil
+}

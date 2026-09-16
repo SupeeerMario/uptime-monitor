@@ -66,3 +66,28 @@ func (h *Handler) ListMonitors(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+func (h *Handler) DeleteMonitor(ctx *gin.Context) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+
+	res, err := h.store.DeleteMonitor(ctx.Request.Context(), id)
+
+	if err != nil {
+		log.Printf("error while deleting monitor row: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if res == 0 {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "monitor not found"})
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
+
+}
