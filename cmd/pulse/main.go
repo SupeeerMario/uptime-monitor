@@ -56,11 +56,22 @@ func main() {
 	}
 
 	jobs := make(chan store.DueMonitor, 100)
+	results := make(chan prober.Result, 100)
 
 	schedCtx, schedCancel := context.WithCancel(context.Background())
 
 	go sched.Run(schedCtx, jobs)
-	go prober.HTTPWorker(schedCtx, jobs)
+	go prober.HTTPWorker(schedCtx, jobs, results)
+
+	go func() {
+
+		for check := range results {
+			err := st.SaveCheck(schedCtx, check.MonitorId, check.StatusCode, check.TotalLatencyMs.Milliseconds(), check.Error)
+			if err != nil {
+				log.Printf("error while inserting row: %v, into checks", err)
+			}
+		}
+	}()
 
 	go func() {
 		log.Printf("Server is starting on port: %v", envs.PORT)

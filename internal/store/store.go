@@ -139,3 +139,21 @@ func (s *Store) ListDueMonitors(ctx context.Context) ([]DueMonitor, error) {
 
 	return list, nil
 }
+
+func (s *Store) SaveCheck(ctx context.Context, monitorId int64, statusCode *int, totalLatencyMs int64, errorMsg *string) error {
+
+	query := `WITH ins AS (INSERT INTO checks 
+			  (monitor_id, status_code, total_latency_ms, error)
+			  VALUES($1, $2, $3, $4))
+
+			  UPDATE monitors SET last_checked_at = now() 
+			  WHERE id = $1;
+			  `
+
+	_, err := s.pool.Exec(ctx, query, monitorId, statusCode, totalLatencyMs, errorMsg)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}

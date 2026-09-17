@@ -17,7 +17,7 @@ type Result struct {
 	Error          *string
 }
 
-func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor) {
+func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor, writeCh chan<- Result) {
 	client := http.Client{Timeout: 10 * time.Second}
 
 	for m := range ch {
@@ -32,6 +32,8 @@ func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor) {
 			res.Error = &s
 			res.MonitorId = m.Id
 
+			writeCh <- res
+
 			continue
 		}
 
@@ -44,6 +46,8 @@ func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor) {
 			s := err.Error()
 			res.Error = &s
 
+			writeCh <- res
+
 			continue
 		}
 
@@ -51,6 +55,8 @@ func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor) {
 		res.StatusCode = &statusCode
 
 		log.Println(res.MonitorId, *res.StatusCode, res.TotalLatencyMs, res.Error)
+
+		writeCh <- res
 
 		io.Copy(io.Discard, clientRes.Body)
 		clientRes.Body.Close()
