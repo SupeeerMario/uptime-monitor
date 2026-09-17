@@ -14,6 +14,7 @@ import (
 
 	"github.com/supeeermario/uptime-monitor/internal/api"
 	"github.com/supeeermario/uptime-monitor/internal/config"
+	"github.com/supeeermario/uptime-monitor/internal/scheduler"
 	"github.com/supeeermario/uptime-monitor/internal/store"
 )
 
@@ -40,6 +41,7 @@ func main() {
 
 	store := store.New(pool)
 	handler := api.CreateHandler(store)
+	sched := scheduler.New(store)
 
 	r.GET("/healthz", api.Health)
 	r.POST("/monitors", handler.CreateMonitor)
@@ -52,6 +54,10 @@ func main() {
 		Handler: r,
 	}
 
+	schedCtx, schedCancel := context.WithCancel(context.Background())
+
+	go sched.Run(schedCtx)
+
 	go func() {
 		log.Printf("Server is starting on port: %v", envs.PORT)
 
@@ -62,6 +68,8 @@ func main() {
 
 	<-sigChan
 
+	schedCancel()
+
 	log.Println("Server is shutting down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -71,7 +79,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("shutdown didn't complete due to: %v", err)
 	}
-
 	pool.Close()
 
 }
