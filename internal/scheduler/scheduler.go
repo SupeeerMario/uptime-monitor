@@ -16,7 +16,7 @@ func New(s *store.Store) *Scheduler {
 	return &Scheduler{s}
 }
 
-func (sc *Scheduler) Run(ctx context.Context) {
+func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -29,7 +29,18 @@ func (sc *Scheduler) Run(ctx context.Context) {
 				log.Println(err)
 				continue
 			}
-			log.Println(due)
+
+			for _, m := range due {
+				select {
+				case ch <- m:
+				case <-ctx.Done():
+					log.Println("The Scheduler stopped mid passing the monitors")
+					return
+
+				}
+			}
+
+			log.Println(len(due))
 		case <-ctx.Done():
 			log.Println("The Scheduler stopped")
 			return

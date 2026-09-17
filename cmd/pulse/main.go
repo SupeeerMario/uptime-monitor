@@ -14,6 +14,7 @@ import (
 
 	"github.com/supeeermario/uptime-monitor/internal/api"
 	"github.com/supeeermario/uptime-monitor/internal/config"
+	"github.com/supeeermario/uptime-monitor/internal/prober"
 	"github.com/supeeermario/uptime-monitor/internal/scheduler"
 	"github.com/supeeermario/uptime-monitor/internal/store"
 )
@@ -39,9 +40,9 @@ func main() {
 	defer poolPingcancel()
 	r := gin.Default()
 
-	store := store.New(pool)
-	handler := api.CreateHandler(store)
-	sched := scheduler.New(store)
+	st := store.New(pool)
+	handler := api.CreateHandler(st)
+	sched := scheduler.New(st)
 
 	r.GET("/healthz", api.Health)
 	r.POST("/monitors", handler.CreateMonitor)
@@ -54,9 +55,12 @@ func main() {
 		Handler: r,
 	}
 
+	jobs := make(chan store.DueMonitor, 100)
+
 	schedCtx, schedCancel := context.WithCancel(context.Background())
 
-	go sched.Run(schedCtx)
+	go sched.Run(schedCtx, jobs)
+	go prober.HTTPWorker(schedCtx, jobs)
 
 	go func() {
 		log.Printf("Server is starting on port: %v", envs.PORT)
