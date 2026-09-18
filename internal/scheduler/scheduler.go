@@ -19,6 +19,7 @@ func New(s *store.Store) *Scheduler {
 func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
+	defer close(ch)
 
 	for {
 		select {

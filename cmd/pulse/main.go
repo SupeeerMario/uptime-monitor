@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -55,22 +56,46 @@ func main() {
 		Handler: r,
 	}
 
+	var wg sync.WaitGroup
+
 	jobs := make(chan store.DueMonitor, 100)
 	results := make(chan prober.Result, 100)
 
 	schedCtx, schedCancel := context.WithCancel(context.Background())
-
+	proberCtx, proberCancel := context.WithCancel(context.Background())
+	writerCtx, writerCancel := context.WithCancel(context.Background())
+	defer writerCancel()
+	// after the run is finished a defer initiated
+	// from within the func to close channel
 	go sched.Run(schedCtx, jobs)
-	go prober.HTTPWorker(schedCtx, jobs, results)
+
+	// adding 1 to the wait group and defering done from within the func,
+	// before -1 the wg, it waits on the wait() to close the channel
+	// so it's an indicator to when all the go routines are done,
+	// which means when all responses has returned
+	wg.Add(1)
+	go prober.HTTPWorker(proberCtx, jobs, results, &wg)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// made an empty chan of type struct, no values being passed through it
+	// it's only an indicator when all the check write to the db are finished,
+	// when all the writes are finished, the channel is closed, which then fires
+	// the sig to continue and close the pool
+	done := make(chan struct{})
 
 	go func() {
 
 		for check := range results {
-			err := st.SaveCheck(schedCtx, check.MonitorId, check.StatusCode, check.TotalLatencyMs.Milliseconds(), check.Error)
+			err := st.SaveCheck(writerCtx, check.MonitorId, check.StatusCode, check.TotalLatencyMs.Milliseconds(), check.Error)
 			if err != nil {
 				log.Printf("error while inserting row: %v, into checks", err)
 			}
 		}
+		close(done)
 	}()
 
 	go func() {
@@ -83,7 +108,10 @@ func main() {
 
 	<-sigChan
 
+	// when the kill sig is initiated the cancel fires to
+	// prevent sched new tasks
 	schedCancel()
+	proberCancel()
 
 	log.Println("Server is shutting down")
 
@@ -94,6 +122,8 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("shutdown didn't complete due to: %v", err)
 	}
+
+	<-done
 	pool.Close()
 
 }
