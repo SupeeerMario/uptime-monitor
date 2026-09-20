@@ -1,4 +1,4 @@
-# Pulse — Uptime Monitor API
+# Uptime Monitor API
 
 A concurrent HTTP uptime monitor written in Go, Gin, pgx and Postgres. Register a URL with a
 check interval, and Pulse probes it on schedule, records every result — status code, latency,
