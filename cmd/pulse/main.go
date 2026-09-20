@@ -65,9 +65,12 @@ func main() {
 	proberCtx, proberCancel := context.WithCancel(context.Background())
 	writerCtx, writerCancel := context.WithCancel(context.Background())
 	defer writerCancel()
+
+	schedDone := make(chan int64, 100)
+
 	// after the run is finished a defer initiated
 	// from within the func to close channel
-	go sched.Run(schedCtx, jobs)
+	go sched.Run(schedCtx, jobs, schedDone)
 
 	// adding 1 to the wait group and defering done from within the func,
 	// before -1 the wg, it waits on the wait() to close the channel
@@ -93,6 +96,10 @@ func main() {
 			err := st.SaveCheck(writerCtx, check.MonitorId, check.StatusCode, check.TotalLatencyMs.Milliseconds(), check.Error)
 			if err != nil {
 				log.Printf("error while inserting row: %v, into checks", err)
+			}
+			select {
+			case schedDone <- check.MonitorId:
+			case <-schedCtx.Done():
 			}
 		}
 		close(done)

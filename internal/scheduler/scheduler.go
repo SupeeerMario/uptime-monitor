@@ -16,14 +16,17 @@ func New(s *store.Store) *Scheduler {
 	return &Scheduler{s}
 }
 
-func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor) {
+func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor, schedDone <-chan int64) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	defer close(ch)
 
+	inFlight := make(map[int64]struct{})
+
 	for {
 		select {
 		case <-ticker.C:
+
 			due, err := sc.store.ListDueMonitors(ctx)
 
 			if err != nil {
@@ -32,7 +35,14 @@ func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor) {
 			}
 
 			for _, m := range due {
+				if _, exists := inFlight[m.Id]; exists {
+					continue
+				}
+
+				inFlight[m.Id] = struct{}{}
+
 				select {
+
 				case ch <- m:
 				case <-ctx.Done():
 					log.Println("The Scheduler stopped mid passing the monitors")
@@ -42,6 +52,10 @@ func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor) {
 			}
 
 			log.Println(len(due))
+
+		case doneId := <-schedDone:
+			delete(inFlight, doneId)
+
 		case <-ctx.Done():
 			log.Println("The Scheduler stopped")
 			return
