@@ -27,6 +27,15 @@ type DueMonitor struct {
 	ExpectedStatus int    `json:"expected_status"`
 }
 
+type Check struct {
+	Id             int64     `json:"id"`
+	MonitorID      int64     `json:"monitor_id"`
+	StatusCode     *int      `json:"status_code"`
+	TotalLatencyMs *int64    `json:"total_latency_ms"`
+	Error          *string   `json:"error"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool}
 }
@@ -161,4 +170,45 @@ func (s *Store) SaveCheck(ctx context.Context, monitorId int64, statusCode *int,
 		return err
 	}
 	return nil
+}
+
+func (s *Store) ListChecks(ctx context.Context, monitorID int64, limit int, offset int) ([]Check, error) {
+	list := []Check{}
+
+	query := `SELECT id, monitor_id, status_code, total_latency_ms, error, created_at
+		      FROM checks WHERE monitor_id = $1 ORDER BY created_at DESC
+			  LIMIT $2 OFFSET $3`
+
+	rows, err := s.pool.Query(ctx, query, monitorID, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c Check
+
+		err := rows.Scan(
+			&c.Id,
+			&c.MonitorID,
+			&c.StatusCode,
+			&c.TotalLatencyMs,
+			&c.Error,
+			&c.CreatedAt,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, c)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+
 }

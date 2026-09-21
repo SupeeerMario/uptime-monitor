@@ -50,7 +50,7 @@ func main() {
 	r.GET("/monitors", handler.ListMonitors)
 	r.DELETE("/monitors/:id", handler.DeleteMonitor)
 	r.GET("/duemonitors", handler.ListDueMonitors)
-
+	r.GET("/monitors/:id/checks", handler.ListChecks)
 	server := &http.Server{
 		Addr:    ":" + envs.PORT,
 		Handler: r,

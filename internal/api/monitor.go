@@ -104,3 +104,54 @@ func (h *Handler) ListDueMonitors(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+func (h *Handler) ListChecks(ctx *gin.Context) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	limitStr := ctx.DefaultQuery("limit", "50")
+	offsetStr := ctx.DefaultQuery("offset", "0")
+	var limitValue int
+	var offsetValue int
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+
+	if val, err := strconv.Atoi(limitStr); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		return
+	} else {
+
+		limitValue = val
+	}
+	if val, err := strconv.Atoi(offsetStr); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		return
+	} else {
+
+		offsetValue = val
+	}
+
+	if limitValue < 1 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	if offsetValue < 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		return
+	}
+
+	if limitValue > 200 {
+		limitValue = 200
+	}
+	res, err := h.store.ListChecks(ctx.Request.Context(), id, limitValue, offsetValue)
+
+	if err != nil {
+		log.Printf("error while listing checks row: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
