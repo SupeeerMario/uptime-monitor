@@ -18,6 +18,7 @@ type Monitor struct {
 	ExpectedStatus  int        `json:"expected_status"`
 	LastCheckedAt   *time.Time `json:"last_checked_at"`
 	CreatedAt       time.Time  `json:"created_at"`
+	UptimePercent   *float64   `json:"uptime_percent"`
 }
 
 type DueMonitor struct {
@@ -48,9 +49,12 @@ func (s *Store) CreateMonitor(ctx context.Context, url string, intervalSeconds i
 func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
 	list := []Monitor{}
 
-	query := `SELECT id, url, interval_seconds, expected_status,
-			  last_checked_at, created_at
-			  FROM monitors ORDER BY id;`
+	query := `SELECT monitors.id, url, interval_seconds, expected_status,
+			  last_checked_at, monitors.created_at,
+			  (100.0 * count(*) FILTER (WHERE error IS NULL 
+			  AND status_code = monitors.expected_status) / NULLIF(count(checks.id), 0))::float8 AS uptime_percent
+			  FROM monitors LEFT JOIN checks ON checks.monitor_id = monitors.id
+			  GROUP BY monitors.id ORDER BY monitors.id;`
 
 	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
@@ -69,6 +73,7 @@ func (s *Store) ListMonitors(ctx context.Context) ([]Monitor, error) {
 			&m.ExpectedStatus,
 			&m.LastCheckedAt,
 			&m.CreatedAt,
+			&m.UptimePercent,
 		)
 
 		if err != nil {
