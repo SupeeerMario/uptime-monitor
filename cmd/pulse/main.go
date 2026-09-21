@@ -76,8 +76,10 @@ func main() {
 	// before -1 the wg, it waits on the wait() to close the channel
 	// so it's an indicator to when all the go routines are done,
 	// which means when all responses has returned
-	wg.Add(1)
-	go prober.HTTPWorker(proberCtx, jobs, results, &wg)
+	for i := range envs.PROBER_COUNT {
+		wg.Add(1)
+		go prober.HTTPWorker(proberCtx, jobs, results, &wg, i)
+	}
 
 	go func() {
 		wg.Wait()

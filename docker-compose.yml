@@ -7,6 +7,7 @@ services:
     environment:
       - DB_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable
       - PORT=${PORT}
+      - PROBER_COUNT=${PROBER_COUNT}
     volumes:
       - .:/app
     depends_on:

@@ -18,7 +18,7 @@ type Result struct {
 	Error          *string
 }
 
-func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor, writeCh chan<- Result, wg *sync.WaitGroup) {
+func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor, writeCh chan<- Result, wg *sync.WaitGroup, proberID int) {
 	defer wg.Done()
 	client := http.Client{Timeout: 10 * time.Second}
 
@@ -28,7 +28,7 @@ func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor, writeCh chan<- 
 			if ok == true {
 				var res Result
 
-				log.Println(m)
+				log.Printf("Prober-Id: %d, Url: %v", proberID, m.Url)
 
 				req, err := http.NewRequestWithContext(context.Background(), "GET", m.Url, nil)
 
@@ -59,7 +59,7 @@ func HTTPWorker(ctx context.Context, ch <-chan store.DueMonitor, writeCh chan<- 
 				statusCode := int(clientRes.StatusCode)
 				res.StatusCode = &statusCode
 
-				log.Println(res.MonitorId, *res.StatusCode, res.TotalLatencyMs, res.Error)
+				log.Printf("proberID: %d, MonitorId: %d, *StatusCode: %d, TotalLatencyMs: %v, Error: %v", proberID, res.MonitorId, *res.StatusCode, res.TotalLatencyMs, res.Error)
 
 				writeCh <- res
 
