@@ -70,7 +70,7 @@ func main() {
 
 	// after the run is finished a defer initiated
 	// from within the func to close channel
-	go sched.Run(schedCtx, jobs, schedDone)
+	go sched.Run(schedCtx, 5*time.Second, jobs, schedDone)
 
 	// adding 1 to the wait group and defering done from within the func,
 	// before -1 the wg, it waits on the wait() to close the channel

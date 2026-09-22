@@ -20,8 +20,8 @@ func New(s DueLister) *Scheduler {
 	return &Scheduler{s}
 }
 
-func (sc *Scheduler) Run(ctx context.Context, ch chan<- store.DueMonitor, schedDone <-chan int64) {
-	ticker := time.NewTicker(5 * time.Second)
+func (sc *Scheduler) Run(ctx context.Context, interval time.Duration, ch chan<- store.DueMonitor, schedDone <-chan int64) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	defer close(ch)
 
