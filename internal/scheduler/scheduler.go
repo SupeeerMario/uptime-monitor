@@ -8,11 +8,15 @@ import (
 	"github.com/supeeermario/uptime-monitor/internal/store"
 )
 
-type Scheduler struct {
-	store *store.Store
+type DueLister interface {
+	ListDueMonitors(ctx context.Context) ([]store.DueMonitor, error)
 }
 
-func New(s *store.Store) *Scheduler {
+type Scheduler struct {
+	store DueLister
+}
+
+func New(s DueLister) *Scheduler {
 	return &Scheduler{s}
 }
 
