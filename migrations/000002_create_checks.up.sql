@@ -2,11 +2,8 @@ CREATE TABLE checks (
     id BIGSERIAL PRIMARY KEY,
     monitor_id BIGINT NOT NULL,
     status_code INT CHECK(status_code BETWEEN 100 AND 599) NULL,
-    ttfb_ms BIGINT NULL,
     total_latency_ms BIGINT NULL,
     error TEXT NULL,
-    redirect_chain TEXT[] NULL,
-    tls_expires_at TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
 
