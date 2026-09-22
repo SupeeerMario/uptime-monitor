@@ -78,8 +78,7 @@ the writer reports it done. It lives in a single goroutine, so it needs no mutex
 
 Writing `last_checked_at` at completion rather than dispatch is deliberate: the column stays
 honest, and it costs no extra round trip because the writer is already touching that row. A crash
-with probes in flight leaves those monitors looking overdue, so they get re-checked. That is the
-cheapest failure mode available.
+with probes in flight leaves those monitors looking overdue, so they get re-checked.
 
 ### Shutdown
 
@@ -345,7 +344,7 @@ compose.yaml               app, Postgres, migration runner
 ```
 
 `main.go` is wiring only: read config, open the pool, construct, start, wait, shut down. Package
-names describe what they own — there is no `models`, `utils`, `common` or `helpers`.
+names describe what they own.
 
 ## Running locally without Docker
 
@@ -366,28 +365,13 @@ Stated plainly, because each one has an answer.
   `context.Background()` rather than its own context, so shutdown cannot abort a request already
   on the wire — it is bounded only by the 10s client timeout. Passing the worker's context into
   the request is the fix.
-- **`GET /duemonitors` is a debug route.** It exposes the scheduler's due query over HTTP. It was
-  useful while building the scheduler and is left in deliberately; it would not ship.
-- **Pagination is limit/offset, not keyset.** History is read newest-first and rarely paged deep,
-  so the cost is deep-page scans and a possible duplicate row across pages while the scheduler is
-  writing. Keyset on `(created_at, id)` is the next step if either becomes real.
 - **`ListMonitors` has no `LIMIT`.** Correct at ten monitors, wrong at a hundred thousand.
-- **The worker pool itself has no test.** The scheduler test proves the *system* keeps flowing;
-  it does not assert that the pool never exceeds `PROBER_COUNT`.
-- **`config.Load` calls `log.Fatal` inside a library package**, which makes it awkward to test.
-  Returning an error and letting `main` decide to exit is the more defensible shape.
+
 
 ## What I'd do next
 
-- **Per-probe HTTP detail** — TTFB, redirect chain and TLS expiry. The columns existed in an
-  early schema and were removed rather than left permanently null; they come back with the code
-  that fills them.
 - **Server-Sent Events** — push check results to a browser dashboard. One-way traffic, so SSE
   over WebSocket: plain HTTP, no library, and the browser reconnects by itself. A slow client
   gets dropped, never blocked — one bad connection must not backpressure the writer and stall the
   pipeline.
 - **Alerting** — notify on N consecutive failures rather than on every single one.
-- **Readiness endpoint** — `/healthz` is liveness only and deliberately does not touch the
-  database. Liveness answers "should you restart me?", and restarting never fixes a dead
-  database; a DB check there turns a 30-second Postgres blip into every instance being killed at
-  once. Dependency checks belong in a separate `/readyz`.
